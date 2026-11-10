@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Mystery of the Seven Stars</title>
+    <script src="https://cdn.jsdelivr.net/npm/tone@14.7.58/build/Tone.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cochin:wght@400;700&display=swap');
+
+        :root {
+            --star-color: #ffffff;
+            --background-color: #0d0c1d;
+            --primary-button-bg: #4a235a;
+            --primary-button-hover: #6a3480;
+            --accent-color: #ffd700;
+            --text-color: #e0e0e0;
+            --correct-color: #38b438;
+            --incorrect-color: #e33838;
+            --container-bg: rgba(25, 23, 43, 0.8);
+            --font-family: 'Cochin', serif;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--background-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .stars {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%"><rect width="100%" height="100%" fill="%230d0c1d" /><circle cx="5%" cy="10%" r="0.5" fill="%23fff" /><circle cx="15%" cy="30%" r="0.8" fill="%23fff" /><circle cx="25%" cy="5%" r="0.6" fill="%23fff" /><circle cx="40%" cy="40%" r="0.4" fill="%23fff" /><circle cx="55%" cy="60%" r="0.7" fill="%23fff" /><circle cx="70%" cy="15%" r="0.9" fill="%23fff" /><circle cx="85%" cy="80%" r="0.5" fill="%23fff" /><circle cx="95%" cy="50%" r="0.8" fill="%23fff" /></svg>');
+            background-size: cover;
+            animation: move-bg 60s linear infinite;
+        }
+
+        @keyframes move-bg {
+            0% { background-position: 0 0; }
+            100% { background-position: 100% 100%; }
+        }
+
+        .game-container {
+            text-align: center;
+            background: var(--container-bg);
+            border-radius: 1rem;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            padding: 2rem;
+            max-width: 90%;
+            width: 500px;
+            position: relative;
+            z-index: 10;
+            border: 2px solid var(--accent-color);
+        }
+
+        h1 {
+            color: var(--accent-color);
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        h2 {
+            color: var(--text-color);
+            font-size: 1.5rem;
+            margin-top: 0;
+        }
+
+        p {
+            font-size: 1.1rem;
+            line-height: 1.5;
+            margin-bottom: 1.5rem;
+        }
+
+        input[type="text"] {
+            padding: 0.75rem;
+            font-size: 1rem;
+            border: 2px solid var(--primary-button-bg);
+            border-radius: 0.5rem;
+            width: 80%;
+            margin-bottom: 1rem; 
+            background-color: var(--background-color);
+            color: var(--text-color);
+        }
+        
+        button {
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            font-family: inherit;
+            border: none;
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--star-color);
+            background-color: var(--primary-button-bg);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+            margin-bottom: 0.5rem;
+        }
+
+        button:hover {
+            background-color: var(--primary-button-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        #answer-buttons {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        #question-display {
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #feedback-message {
+            font-size: 1.2rem;
+            font-weight: bold;
+            height: 1.5
