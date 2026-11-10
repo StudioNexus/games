@@ -5,57 +5,65 @@ on:
     branches: [ "main", "development" ]
   pull_request:
     branches: [ "main" ]
-  workflow_dispatch: # Allows manual tracking push overrides within GitHub UI
+  workflow_dispatch:
 
 jobs:
   build_and_deploy:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
-    - name: Checkout Source Repository Tree
-      uses: actions/checkout@v4
+      - name: Checkout Source Repository Tree
+        uses: actions/checkout@v4
+        with:
+          # Fetches full history to ensure git push & diff evaluate correctly
+          fetch-depth: 0
 
-    - name: Initialize Node.js Operational Environment
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: '**/package-lock.json' # Gracefully defaults if lock files are not yet committed
+      - name: Initialize Node.js Operational Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
 
-    - name: Configure Execution Dependencies
-      run: |
-        if [ -f package.json ]; then
-          npm ci
-        else
-          echo "No package.json tracking manifest configured. Splicing default testing arrays."
-          npm init -y
-        fi
+      - name: Configure Execution Dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          elif [ -f package.json ]; then
+            npm install
+          else
+            echo "No package.json tracking manifest configured. Splicing default testing arrays."
+            npm init -y
+          fi
 
-    - name: Execute Automated Nexus Build Compilation Engine
-      run: node scripts/build-nexus.js
+      - name: Execute Automated Nexus Build Compilation Engine
+        run: node scripts/build-nexus.js
 
-    - name: Verify Distribution Asset Blueprint Generation
-      run: |
-        if [ ! -f dist/gemini-terminal.min.html ]; then
-          echo "❌ Critical Build Defect: Production asset compilation file missing from workspace output target!"
-          exit 1
-        fi
-        echo "✅ Compilation output target verified."
+      - name: Verify Distribution Asset Blueprint Generation
+        run: |
+          if [ ! -f dist/gemini-terminal.min.html ]; then
+            echo "❌ Critical Build Defect: Production asset compilation file missing from workspace output target!"
+            exit 1
+          fi
+          echo "✅ Compilation output target verified."
 
-    - name: Commit Transpiled Core Assets and Admin Changes
-      if: github.event_name == 'push'
-      run: |
-        git config --global user.name "Nexus Core Automation"
-        git config --global user.email "nexus-bot@users.noreply.github.com"
-        
-        # Check for modified structural layout states or generated dist distributions
-        git add dist/ modules/admin.html || true
-        
-        if git diff --staged --quiet; then
-          echo "No automated structural updates or asset mutations encountered. Workspace cleanly balanced."
-        else
-          git commit -m "chore(ci): auto-compile Gemini CLI & synchronize Matrix admin telemetry configurations [skip ci]"
-          git push origin ${ { github.ref_name } }
-        fi
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Commit Transpiled Core Assets and Admin Changes
+        if: github.event_name == 'push'
+        run: |
+          git config --global user.name "Nexus Core Automation"
+          git config --global user.email "nexus-bot@users.noreply.github.com"
+          
+          # Stage target distribution outputs and modules
+          git add dist/ modules/admin.html || true
+          
+          if git diff --staged --quiet; then
+            echo "No automated structural updates or asset mutations encountered. Workspace cleanly balanced."
+          else
+            git commit -m "chore(ci): auto-compile Gemini CLI & synchronize Matrix admin telemetry configurations [skip ci]"
+            git push origin ${{ github.ref_name }}
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
