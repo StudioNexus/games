@@ -129,4 +129,326 @@
         #feedback-message {
             font-size: 1.2rem;
             font-weight: bold;
-            height: 1.5
+            height: 1.5rem;
+            margin-top: 1rem;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .correct {
+            color: var(--correct-color);
+            opacity: 1 !important;
+        }
+
+        .incorrect {
+            color: var(--incorrect-color);
+            opacity: 1 !important;
+        }
+
+        .correct-answer-flash {
+            background-color: var(--correct-color) !important;
+            transform: scale(1.05);
+        }
+        
+        .incorrect-answer-flash {
+            background-color: var(--incorrect-color) !important;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        #scoreboard-container {
+            margin-top: 2rem;
+            border-radius: 1rem;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        #scoreboard {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        #scoreboard th, #scoreboard td {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #scoreboard th {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        #volume-control {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 20;
+            color: var(--accent-color);
+            text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="game-container">
+        <div id="volume-control">🔊</div>
+        
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <h1>The Mystery of the Seven Stars</h1>
+            <p>Answer questions about the Bible to unlock the secrets of the seven stars and earn your place on the scoreboard!</p>
+            <input type="text" id="player-name-input" placeholder="Enter your name">
+            <button id="start-button">Start Game</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="hidden">
+            <div id="game-header">
+                <span id="score-display">Score: 0</span> | 
+                <span id="level-display">Level: 1</span>
+            </div>
+            
+            <div id="question-display">
+                <p id="question-text"></p>
+                <div id="answer-buttons"></div>
+            </div>
+            
+            <p id="feedback-message"></p>
+        </div>
+
+        <!-- Scoreboard Screen -->
+        <div id="scoreboard-screen" class="hidden">
+            <h2 id="final-message"></h2>
+            <div id="scoreboard-container">
+                <h2>Scoreboard</h2>
+                <table id="scoreboard">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Player</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button id="restart-button">Play Again</button>
+        </div>
+    </div>
+
+    <script>
+        let currentLevel = 0;
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let playerName = '';
+        let quizData = [];
+        let scoreboard = JSON.parse(localStorage.getItem('seven_stars_scores')) || [];
+        let isMuted = false;
+
+        const startScreen = document.getElementById('start-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const scoreboardScreen = document.getElementById('scoreboard-screen');
+        const startButton = document.getElementById('start-button');
+        const restartButton = document.getElementById('restart-button');
+        const playerNameInput = document.getElementById('player-name-input');
+        const scoreDisplay = document.getElementById('score-display');
+        const levelDisplay = document.getElementById('level-display');
+        const questionText = document.getElementById('question-text');
+        const answerButtonsContainer = document.getElementById('answer-buttons');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const scoreboardTableBody = document.querySelector('#scoreboard tbody');
+        const finalMessage = document.getElementById('final-message');
+        const volumeControl = document.getElementById('volume-control');
+
+        let bgmSynth, correctSynth, incorrectSynth, bgmLoop;
+
+        const initializeAudio = () => {
+            bgmSynth = new Tone.Synth({
+                oscillator: { type: "sine" },
+                envelope: { attack: 0.05, decay: 0.2, sustain: 0.5, release: 0.8 }
+            }).toDestination();
+
+            correctSynth = new Tone.Synth({
+                oscillator: { type: "triangle" },
+                envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 }
+            }).toDestination();
+
+            incorrectSynth = new Tone.Synth({
+                oscillator: { type: "square" },
+                envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.3 }
+            }).toDestination();
+
+            const notes = ["C4", "E4", "G4", "A4", "G4", "E4", "C4", null];
+            bgmLoop = new Tone.Sequence((time, note) => {
+                if (note) bgmSynth.triggerAttackRelease(note, "8n", time);
+            }, notes, "4n").start(0);
+
+            Tone.Transport.bpm.value = 120;
+            Tone.Transport.start();
+
+            volumeControl.addEventListener('click', toggleMute);
+        };
+
+        const toggleMute = () => {
+            isMuted = !isMuted;
+            Tone.Destination.mute = isMuted;
+            volumeControl.textContent = isMuted ? '🔇' : '🔊';
+        };
+
+        function initializeQuizData() {
+            quizData = [
+                [
+                    { question: "Who was the first man created by God?", options: ["Adam", "Noah", "Abraham", "Moses"], answer: "Adam" },
+                    { question: "How many days did it take God to create the world?", options: ["5", "6", "7", "10"], answer: "6" },
+                    { question: "What animal tempted Eve in the Garden of Eden?", options: ["A lion", "A bear", "A snake", "A dove"], answer: "A snake" },
+                    { question: "Who was the mother of Jesus?", options: ["Sarah", "Esther", "Mary", "Eve"], answer: "Mary" }
+                ],
+                [
+                    { question: "Who built the ark to survive the great flood?", options: ["Isaac", "Joseph", "Noah", "Jacob"], answer: "Noah" },
+                    { question: "How many disciples did Jesus have?", options: ["7", "10", "12", "15"], answer: "12" },
+                    { question: "Which sea did Moses part?", options: ["The Dead Sea", "The Mediterranean Sea", "The Red Sea", "The Galilee Sea"], answer: "The Red Sea" },
+                    { question: "What was David's weapon to defeat Goliath?", options: ["A sword", "A bow and arrow", "A spear", "A slingshot"], answer: "A slingshot" }
+                ],
+                [
+                    { question: "In what town was Jesus born?", options: ["Nazareth", "Jerusalem", "Bethlehem", "Galilee"], answer: "Bethlehem" },
+                    { question: "What was the name of the man who Jesus raised from the dead?", options: ["Lazarus", "John", "Matthew", "Peter"], answer: "Lazarus" },
+                    { question: "What is the last book of the Old Testament?", options: ["Malachi", "Haggai", "Zechariah", "Joel"], answer: "Malachi" },
+                    { question: "Which biblical figure was swallowed by a great fish?", options: ["Jonah", "Elijah", "Daniel", "Paul"], answer: "Jonah" }
+                ]
+            ];
+        }
+
+        const shuffleArray = (array) => {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        };
+
+        const startGame = async () => {
+            playerName = playerNameInput.value.trim() || 'Player';
+            currentLevel = 0;
+            currentQuestionIndex = 0;
+            score = 0;
+
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+                initializeAudio();
+            }
+
+            initializeQuizData();
+            quizData.forEach(level => shuffleArray(level));
+
+            startScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            scoreboardScreen.classList.add('hidden');
+
+            updateDisplay();
+            loadQuestion();
+        };
+
+        const loadQuestion = () => {
+            const levelQuestions = quizData[currentLevel];
+            if (!levelQuestions) {
+                endGame();
+                return;
+            }
+
+            const questionData = levelQuestions[currentQuestionIndex];
+            questionText.textContent = questionData.question;
+            answerButtonsContainer.innerHTML = '';
+
+            const shuffledOptions = [...questionData.options];
+            shuffleArray(shuffledOptions);
+
+            shuffledOptions.forEach(option => {
+                const button = document.createElement('button');
+                button.textContent = option;
+                button.addEventListener('click', () => handleAnswer(option, questionData.answer, button));
+                answerButtonsContainer.appendChild(button);
+            });
+
+            feedbackMessage.classList.remove('correct', 'incorrect');
+        };
+
+        const handleAnswer = (selectedOption, correctAnswer, button) => {
+            const allButtons = answerButtonsContainer.querySelectorAll('button');
+            allButtons.forEach(btn => btn.disabled = true);
+
+            if (selectedOption === correctAnswer) {
+                score += 10;
+                feedbackMessage.textContent = 'Correct!';
+                feedbackMessage.classList.add('correct');
+                button.classList.add('correct-answer-flash');
+                if (correctSynth) correctSynth.triggerAttackRelease("C5", "8n");
+            } else {
+                feedbackMessage.textContent = `Incorrect. The correct answer was: ${correctAnswer}`;
+                feedbackMessage.classList.add('incorrect');
+                button.classList.add('incorrect-answer-flash');
+                if (incorrectSynth) incorrectSynth.triggerAttackRelease("C3", "8n");
+
+                const correctButton = Array.from(allButtons).find(btn => btn.textContent === correctAnswer);
+                if (correctButton) correctButton.classList.add('correct-answer-flash');
+            }
+
+            updateDisplay();
+
+            setTimeout(() => {
+                currentQuestionIndex++;
+                if (currentQuestionIndex < quizData[currentLevel].length) {
+                    loadQuestion();
+                    allButtons.forEach(btn => btn.disabled = false);
+                } else {
+                    currentLevel++;
+                    currentQuestionIndex = 0;
+                    if (currentLevel < quizData.length) {
+                        feedbackMessage.textContent = `Level ${currentLevel} Complete! Prepare for Level ${currentLevel + 1}.`;
+                        feedbackMessage.classList.add('correct');
+                        setTimeout(() => {
+                            loadQuestion();
+                            allButtons.forEach(btn => btn.disabled = false);
+                        }, 2000);
+                    } else {
+                        endGame();
+                    }
+                }
+            }, 2000);
+        };
+
+        const updateDisplay = () => {
+            scoreDisplay.textContent = `Score: ${score}`;
+            levelDisplay.textContent = `Level: ${currentLevel + 1}`;
+        };
+
+        const endGame = () => {
+            gameScreen.classList.add('hidden');
+            scoreboardScreen.classList.remove('hidden');
+
+            finalMessage.textContent = `Congratulations, ${playerName}! Your final score is ${score}.`;
+
+            scoreboard.push({ name: playerName, score: score });
+            scoreboard.sort((a, b) => b.score - a.score);
+            scoreboard = scoreboard.slice(0, 5); // Keep top 5
+
+            localStorage.setItem('seven_stars_scores', JSON.stringify(scoreboard));
+
+            scoreboardTableBody.innerHTML = '';
+            scoreboard.forEach((entry, index) => {
+                const row = document.createElement('tr');
+                row.innerHTML = `<td>${index + 1}</td><td>${entry.name}</td><td>${entry.score}</td>`;
+                scoreboardTableBody.appendChild(row);
+            });
+        };
+
+        startButton.addEventListener('click', startGame);
+        restartButton.addEventListener('click', () => {
+            scoreboardScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        });
+    </script>
+</body>
+</html>
