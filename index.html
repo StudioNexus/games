@@ -30,7 +30,8 @@
             align-items: center;
             min-height: 100vh;
             margin: 0;
-            overflow: hidden;
+            overflow-x: hidden;
+            overflow-y: auto;
             position: relative;
         }
 
@@ -195,7 +196,7 @@
 <body>
     <div class="stars"></div>
     <div class="game-container">
-        <div id="volume-control">🔊</div>
+        <button type="button" id="volume-control" aria-label="Mute game audio">🔊</button>
         
         <!-- Start Screen -->
         <div id="start-screen">
@@ -246,7 +247,21 @@
         let score = 0;
         let playerName = '';
         let quizData = [];
-        let scoreboard = JSON.parse(localStorage.getItem('seven_stars_scores')) || [];
+        let scoreboard = [];
+        try {
+            const savedScores = JSON.parse(localStorage.getItem('seven_stars_scores') || '[]');
+            if (Array.isArray(savedScores)) {
+                scoreboard = savedScores
+                    .filter(entry => entry && typeof entry.name === 'string'
+                        && Number.isInteger(entry.score) && entry.score >= 0)
+                    .map(entry => ({ name: entry.name.slice(0, 40), score: entry.score }))
+                    .sort((a, b) => b.score - a.score)
+                    .slice(0, 5);
+            }
+        } catch {
+            // Blocked storage or malformed older saves must not prevent guest play.
+            scoreboard = [];
+        }
         let isMuted = false;
 
         const startScreen = document.getElementById('start-screen');
@@ -263,6 +278,9 @@
         const scoreboardTableBody = document.querySelector('#scoreboard tbody');
         const finalMessage = document.getElementById('final-message');
         const volumeControl = document.getElementById('volume-control');
+        if (typeof Tone === 'undefined') {
+            volumeControl.hidden = true; // Sound is optional if the CDN is unavailable.
+        }
 
         let bgmSynth, correctSynth, incorrectSynth, bgmLoop;
 
@@ -297,6 +315,7 @@
             isMuted = !isMuted;
             Tone.Destination.mute = isMuted;
             volumeControl.textContent = isMuted ? '🔇' : '🔊';
+            volumeControl.setAttribute('aria-label', isMuted ? 'Unmute game audio' : 'Mute game audio');
         };
 
         function initializeQuizData() {
@@ -330,14 +349,19 @@
         };
 
         const startGame = async () => {
-            playerName = playerNameInput.value.trim() || 'Player';
+            playerName = playerNameInput.value.trim().slice(0, 40) || 'Player';
             currentLevel = 0;
             currentQuestionIndex = 0;
             score = 0;
 
-            if (Tone.context.state !== 'running') {
-                await Tone.start();
-                initializeAudio();
+            if (typeof Tone !== 'undefined' && !bgmSynth) {
+                try {
+                    await Tone.start();
+                    initializeAudio();
+                } catch {
+                    // Audio failure does not block the Bible quiz.
+                    volumeControl.hidden = true;
+                }
             }
 
             initializeQuizData();
@@ -360,7 +384,7 @@
 
             const questionData = levelQuestions[currentQuestionIndex];
             questionText.textContent = questionData.question;
-            answerButtonsContainer.innerHTML = '';
+            answerButtonsContainer.replaceChildren();
 
             const shuffledOptions = [...questionData.options];
             shuffleArray(shuffledOptions);
@@ -434,12 +458,20 @@
             scoreboard.sort((a, b) => b.score - a.score);
             scoreboard = scoreboard.slice(0, 5); // Keep top 5
 
-            localStorage.setItem('seven_stars_scores', JSON.stringify(scoreboard));
+            try {
+                localStorage.setItem('seven_stars_scores', JSON.stringify(scoreboard));
+            } catch {
+                // Browser privacy settings may prevent persistence.
+            }
 
-            scoreboardTableBody.innerHTML = '';
+            scoreboardTableBody.replaceChildren();
             scoreboard.forEach((entry, index) => {
                 const row = document.createElement('tr');
-                row.innerHTML = `<td>${index + 1}</td><td>${entry.name}</td><td>${entry.score}</td>`;
+                for (const value of [index + 1, entry.name, entry.score]) {
+                    const cell = document.createElement('td');
+                    cell.textContent = String(value);
+                    row.appendChild(cell);
+                }
                 scoreboardTableBody.appendChild(row);
             });
         };

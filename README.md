@@ -1,29 +1,33 @@
-# Games & Educational Arcade Engine
+# The Mystery of the Seven Stars
 
-Welcome to the repository! This project hosts interactive educational games, custom game loops, and macro frameworks focused on gamified learning and narrative-driven mechanics.
+A small, standalone **Bible knowledge quiz** built with HTML, CSS, and JavaScript. This is a public educational-game demonstration from StudioNexus, not the source repository for Amazing Grace Home Living or its production website.
 
-# Amazing Grace Home Living - Web Platform & Games
+## What is playable
 
----
+- Three quiz stages with four questions each, for 12 questions total.
+- Ten points per correct answer, with immediate answer feedback.
+- A **local top-five scoreboard** saved in the visitor's browser. It is not an online leaderboard, account, or verified achievement.
+- Optional synthesized music and effects using Tone.js from a third-party CDN. The quiz remains playable if audio is unavailable.
+- No account, payment, backend, analytics, or API key is required.
 
-## 🚀 Live Demo & Hosting
+## Run locally
 
-* **Live Site:** Hosted automatically via GitHub Pages at `https://amazing-grace-home-living.github.io/website/`
-* **Primary Source Mirror:** Managed via [`NicholaiMadias/AmazingGrace`](https://github.com/NicholaiMadias/AmazingGrace)
+```sh
+python -m http.server 8000
+```
 
----
+Open `http://localhost:8000` and choose **Start Game**. Static hosting that serves `index.html` also works; a currently active public deployment is not asserted here.
 
-## 🛠 Features & Architecture
+To run the source safety/syntax smoke test, use Node 22+:
 
-* **Responsive UI:** Minimalist, high-contrast dark theme with neon accents built for mobile and desktop viewports.
-* **Web Audio Synthesis:** Integrated reactive sound effects and dynamic background music powered by `Tone.js`.
-* **Automated CI/CD:** Native GitHub Actions pipeline for linting, compiling, and automated deployment.
+```sh
+node --test tests/game-safety.test.mjs
+```
 
----
+## Privacy and security
 
-## 💻 Quick Start & Development
+Names entered for the local scoreboard stay in that browser's storage. Input is rendered as text, not injected into HTML, and stored scores are validated on load. Clearing this site's browser storage clears the scoreboard. Do not enter sensitive personal information as a player name.
 
-1. **Clone the repository:**
-   ```bash
-   git clone [https://github.com/Amazing-Grace-Home-Living/website.git](https://github.com/Amazing-Grace-Home-Living/website.git)
-   cd website
+This repository is a focused teaching sample. For a larger Bible-study arcade with additional games and mission activities, see [Voice of Jesus Ministry](https://voiceofjesusministry.net/arcade).
+
+See [LICENSE](LICENSE) for repository licensing.
