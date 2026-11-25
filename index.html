@@ -397,6 +397,7 @@
             });
 
             feedbackMessage.classList.remove('correct', 'incorrect');
+            feedbackMessage.textContent = '';
         };
 
         const handleAnswer = (selectedOption, correctAnswer, button) => {
@@ -430,6 +431,7 @@
                     currentLevel++;
                     currentQuestionIndex = 0;
                     if (currentLevel < quizData.length) {
+                        updateDisplay();
                         feedbackMessage.textContent = `Level ${currentLevel} Complete! Prepare for Level ${currentLevel + 1}.`;
                         feedbackMessage.classList.add('correct');
                         setTimeout(() => {
