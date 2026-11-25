@@ -18,10 +18,10 @@ python -m http.server 8000
 
 Open `http://localhost:8000` and choose **Start Game**. Static hosting that serves `index.html` also works; a currently active public deployment is not asserted here.
 
-To run the source safety/syntax smoke test, use Node 22+:
+To run the gameplay and source safety checks, use Node 22+:
 
 ```sh
-node --test tests/game-safety.test.mjs
+node --test tests/*.test.mjs
 ```
 
 ## Privacy and security
